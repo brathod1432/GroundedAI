@@ -1,0 +1,5 @@
+{
+  "original_question": "What is the capital of France and what is its population?",
+  "generated_answer": "The capital of France is Paris. Paris has a population of over 2 million people.",
+  "trusted_sources": ["wikipedia", "world-bank"]
+}

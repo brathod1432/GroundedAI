@@ -1,0 +1,55 @@
+{
+  "extracted_claims": [
+    "The capital of France is Paris.",
+    "Paris has a population of over 2 million people."
+  ],
+  "evidence_items": [
+    {
+      "claim_index": 0,
+      "source": "wikipedia",
+      "snippet": "Paris is the capital and most populous city of France.",
+      "url": "https://en.wikipedia.org/wiki/Paris",
+      "relevance_score": 0.95
+    },
+    {
+      "claim_index": 1,
+      "source": "wikipedia",
+      "snippet": "Paris has a population of 2,102,650 as of 2023.",
+      "url": "https://en.wikipedia.org/wiki/Paris",
+      "relevance_score": 0.90
+    }
+  ],
+  "claim_verdicts": [
+    {
+      "claim_index": 0,
+      "verdict": "SUPPORTED",
+      "confidence": 0.95,
+      "evidence_indices": [0],
+      "reasoning": "Evidence aligns with the claim."
+    },
+    {
+      "claim_index": 1,
+      "verdict": "SUPPORTED",
+      "confidence": 0.90,
+      "evidence_indices": [1],
+      "reasoning": "Evidence aligns with the claim."
+    }
+  ],
+  "hallucination_risk_score": 0.0,
+  "risk_level": "LOW",
+  "final_summary": "2 of 2 claims are supported by evidence. No claims were contradicted. Overall hallucination risk is LOW (score: 0.00).",
+  "citations": [
+    {
+      "claim_index": 0,
+      "source": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Paris",
+      "confidence": 0.95
+    },
+    {
+      "claim_index": 1,
+      "source": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Paris",
+      "confidence": 0.90
+    }
+  ]
+}
