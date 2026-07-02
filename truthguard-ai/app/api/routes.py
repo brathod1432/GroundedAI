@@ -15,6 +15,8 @@ from app.config import settings
 from app.core.claim_extractor import extract_claims
 from app.core.citation_checker import check_citations
 from app.core.evidence_retriever import retrieve_evidence
+from app.core.evidence_ranker import rank_evidence
+from app.core.claim_evidence_aligner import align_claims_with_evidence
 from app.core.report_builder import build_report
 from app.core.verifier import verify_claims
 from app.schemas import VerifyRequest, VerifyResponse
@@ -31,6 +33,7 @@ router = APIRouter()
     description=(
         "Takes a user question and an LLM-generated answer, then runs the "
         "full verification pipeline: claim extraction → evidence retrieval → "
+        "evidence ranking → claim-evidence alignment → "
         "citation checking → claim verification → risk scoring → report."
     ),
 )
@@ -63,22 +66,28 @@ def verify(request: VerifyRequest) -> VerifyResponse:
         trusted_sources=request.trusted_sources,
     )
 
-    # 3. Citation checking
+    # 3. Evidence ranking
+    ranked_evidence = rank_evidence(evidence_items, claims)
+
+    # 4. Claim-evidence alignment
+    aligned_evidence = align_claims_with_evidence(claims, ranked_evidence)
+
+    # 5. Citation checking (validate citations for supported claims)
     citations = check_citations(
         claims=claims,
-        evidence_items=evidence_items,
+        evidence_items=aligned_evidence,
     )
 
-    # 4. Claim verification
+    # 6. Claim verification
     verdicts = verify_claims(
         claims=claims,
-        evidence_items=evidence_items,
+        evidence_items=aligned_evidence,
     )
 
-    # 5. Report assembly (includes scoring)
+    # 7. Report assembly (includes scoring)
     report = build_report(
         extracted_claims=claims,
-        evidence_items=evidence_items,
+        evidence_items=aligned_evidence,
         claim_verdicts=verdicts,
         citations=citations,
     )

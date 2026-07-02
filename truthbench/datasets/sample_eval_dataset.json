@@ -1,0 +1,192 @@
+{
+  "name": "TruthBench Evaluation Dataset",
+  "version": "0.1.0",
+  "description": "Sample evaluation dataset for hallucination-reduction system benchmarking. Contains 5 diverse test cases covering fully supported, partially supported, contradicted, mixed, and weak citation scenarios.",
+  "cases": [
+    {
+      "id": "case_001_fully_supported",
+      "original_question": "What is the capital of France and what is its population?",
+      "generated_answer": "The capital of France is Paris. Paris has a population of over 2 million people.",
+      "expected_claims": [
+        {
+          "text": "The capital of France is Paris.",
+          "claim_type": "factual"
+        },
+        {
+          "text": "Paris has a population of over 2 million people.",
+          "claim_type": "statistical"
+        }
+      ],
+      "expected_verdicts": [
+        {
+          "claim_text": "The capital of France is Paris.",
+          "verdict": "SUPPORTED",
+          "confidence": 1.0,
+          "reasoning": "Well-established fact confirmed by multiple authoritative sources"
+        },
+        {
+          "claim_text": "Paris has a population of over 2 million people.",
+          "verdict": "SUPPORTED",
+          "confidence": 0.95,
+          "reasoning": "Paris metropolitan area population exceeds 2 million per official statistics"
+        }
+      ],
+      "trusted_reference_evidence": [
+        "https://en.wikipedia.org/wiki/Paris",
+        "https://www.insee.fr/en/statistiques"
+      ],
+      "expected_risk_level": "LOW",
+      "notes": "Fully supported answer with strong evidence for all claims. Ideal low-risk response."
+    },
+    {
+      "id": "case_002_one_unsupported_claim",
+      "original_question": "What are the main exports of Germany?",
+      "generated_answer": "Germany's main exports include vehicles, machinery, and chemical products. The country also exports significant amounts of chocolate.",
+      "expected_claims": [
+        {
+          "text": "Germany's main exports include vehicles, machinery, and chemical products.",
+          "claim_type": "factual"
+        },
+        {
+          "text": "The country also exports significant amounts of chocolate.",
+          "claim_type": "statistical"
+        }
+      ],
+      "expected_verdicts": [
+        {
+          "claim_text": "Germany's main exports include vehicles, machinery, and chemical products.",
+          "verdict": "SUPPORTED",
+          "confidence": 1.0,
+          "reasoning": "Confirmed by World Trade Organization and German statistical office data"
+        },
+        {
+          "claim_text": "The country also exports significant amounts of chocolate.",
+          "verdict": "NOT_ENOUGH_EVIDENCE",
+          "confidence": 0.3,
+          "reasoning": "No reliable source confirms chocolate as a significant export category for Germany"
+        }
+      ],
+      "trusted_reference_evidence": [
+        "https://www.destatis.de/EN/Themes/Foreign-Trade/_node.html",
+        "https://www.wto.org/english/res_e/statis_e/statis_e.htm"
+      ],
+      "expected_risk_level": "MEDIUM",
+      "notes": "One claim is well-supported, one lacks evidence. Moderate hallucination risk due to unverified statistical claim."
+    },
+    {
+      "id": "case_003_contradicted_claim",
+      "original_question": "When did the first human land on the moon?",
+      "generated_answer": "The first human landed on the moon in 1967 during the Apollo 8 mission.",
+      "expected_claims": [
+        {
+          "text": "The first human landed on the moon in 1967 during the Apollo 8 mission.",
+          "claim_type": "factual"
+        }
+      ],
+      "expected_verdicts": [
+        {
+          "claim_text": "The first human landed on the moon in 1967 during the Apollo 8 mission.",
+          "verdict": "CONTRADICTED",
+          "confidence": 1.0,
+          "reasoning": "Apollo 8 orbited the moon but did not land. First landing was Apollo 11 in 1969 per NASA records"
+        }
+      ],
+      "trusted_reference_evidence": [
+        "https://www.nasa.gov/mission_pages/apollo/missions/apollo11.html",
+        "https://en.wikipedia.org/wiki/Apollo_11"
+      ],
+      "expected_risk_level": "HIGH",
+      "notes": "Factually incorrect claim about a well-documented historical event. High hallucination risk."
+    },
+    {
+      "id": "case_004_mixed_supported_unsupported",
+      "original_question": "What are the health benefits of green tea?",
+      "generated_answer": "Green tea contains antioxidants called catechins. Studies show it reduces risk of heart disease by 30%. It also improves brain function and helps with weight loss.",
+      "expected_claims": [
+        {
+          "text": "Green tea contains antioxidants called catechins.",
+          "claim_type": "factual"
+        },
+        {
+          "text": "Studies show it reduces risk of heart disease by 30%.",
+          "claim_type": "statistical"
+        },
+        {
+          "text": "It also improves brain function.",
+          "claim_type": "causal"
+        },
+        {
+          "text": "It helps with weight loss.",
+          "claim_type": "causal"
+        }
+      ],
+      "expected_verdicts": [
+        {
+          "claim_text": "Green tea contains antioxidants called catechins.",
+          "verdict": "SUPPORTED",
+          "confidence": 1.0,
+          "reasoning": "Well-established biochemical fact confirmed by numerous studies"
+        },
+        {
+          "claim_text": "Studies show it reduces risk of heart disease by 30%.",
+          "verdict": "NOT_ENOUGH_EVIDENCE",
+          "confidence": 0.4,
+          "reasoning": "Specific 30% figure not consistently supported; meta-analyses show varied results"
+        },
+        {
+          "claim_text": "It also improves brain function.",
+          "verdict": "SUPPORTED",
+          "confidence": 0.8,
+          "reasoning": "L-theanine and caffeine combination shown to improve attention in controlled studies"
+        },
+        {
+          "claim_text": "It helps with weight loss.",
+          "verdict": "NOT_ENOUGH_EVIDENCE",
+          "confidence": 0.35,
+          "reasoning": "Evidence for weight loss effect is weak and inconsistent across clinical trials"
+        }
+      ],
+      "trusted_reference_evidence": [
+        "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6958440/",
+        "https://pubmed.ncbi.nlm.nih.gov/27471492/"
+      ],
+      "expected_risk_level": "MEDIUM",
+      "notes": "Mixed quality answer - some claims well-supported, others overstated. Moderate risk due to unsupported statistical and causal claims."
+    },
+    {
+      "id": "case_005_weak_citations",
+      "original_question": "What is the GDP of Japan?",
+      "generated_answer": "Japan's GDP is approximately $4.2 trillion, making it the third largest economy in the world.",
+      "expected_claims": [
+        {
+          "text": "Japan's GDP is approximately $4.2 trillion.",
+          "claim_type": "statistical"
+        },
+        {
+          "text": "Making it the third largest economy in the world.",
+          "claim_type": "factual"
+        }
+      ],
+      "expected_verdicts": [
+        {
+          "claim_text": "Japan's GDP is approximately $4.2 trillion.",
+          "verdict": "SUPPORTED",
+          "confidence": 0.85,
+          "reasoning": "IMF 2023 nominal GDP estimate was ~$4.23 trillion"
+        },
+        {
+          "claim_text": "Making it the third largest economy in the world.",
+          "verdict": "SUPPORTED",
+          "confidence": 0.9,
+          "reasoning": "Japan ranked 3rd by nominal GDP after US and China per IMF/WB"
+        }
+      ],
+      "trusted_reference_evidence": [
+        "https://www.imf.org/en/Countries/JPN",
+        "https://data.worldbank.org/country/japan"
+      ],
+      "expected_risk_level": "LOW",
+      "notes": "Claims are factually correct but answer provides no citations or source references. Low factual risk but poor citation quality."
+    }
+  ]
+}

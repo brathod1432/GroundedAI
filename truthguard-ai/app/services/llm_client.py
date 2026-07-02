@@ -46,21 +46,28 @@ class MockLLMClient(BaseLLMClient):
         })
 
 
-# ── OpenAI placeholder ──────────────────────────────────────────────────
+# ── OpenAI client (requires API key) ────────────────────────────────────
 
 class OpenAILLMClient(BaseLLMClient):
     """OpenAI-backed client. Requires ``openai_api_key`` in settings.
 
-    This is a *skeleton* — fill in with real API calls when ready.
+    This client is a stub that clearly indicates the required configuration.
+    When OpenAI API key is provided, implement the complete method using the
+    OpenAI Python SDK.
     """
 
     def __init__(self) -> None:
         if not settings.openai_api_key:
-            raise ValueError("OPENAI_API_KEY must be set to use the OpenAI LLM client.")
+            raise ValueError(
+                "OPENAI_API_KEY must be set in environment to use OpenAI LLM client. "
+                "Set llm_provider=mock in config to use the mock client instead."
+            )
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
-        # TODO: implement with ``openai.ChatCompletion.create``
-        raise NotImplementedError("OpenAI integration pending — see roadmap v0.2")
+        raise NotImplementedError(
+            "OpenAI completion not implemented. Set llm_provider=mock or implement "
+            "the complete method using the OpenAI Python SDK."
+        )
 
 
 # ── Factory ──────────────────────────────────────────────────────────────

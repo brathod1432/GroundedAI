@@ -87,8 +87,8 @@ class TestBuildReport:
             citations=[],
         )
         assert "1 of 3 claims are supported" in report.final_summary
-        assert "1 claim contradicts evidence" in report.final_summary
-        assert "1 claim lacks sufficient evidence" in report.final_summary
+        assert "1 claim contradict evidence" in report.final_summary
+        assert "1 claim lack sufficient evidence" in report.final_summary
 
     def test_citations_passed_through(self) -> None:
         citations = [

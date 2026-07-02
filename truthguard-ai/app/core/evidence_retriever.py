@@ -16,7 +16,7 @@ from app.services.search_client import BaseSearchClient, get_search_client
 logger = logging.getLogger(__name__)
 
 
-def retrieve_evidence(
+def retrieve_candidate_evidence(
     claims: list[str],
     trusted_sources: list[str] | None = None,
     search_client: BaseSearchClient | None = None,
