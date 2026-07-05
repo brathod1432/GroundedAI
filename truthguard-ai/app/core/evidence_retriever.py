@@ -42,7 +42,6 @@ def retrieve_candidate_evidence(
     sources = trusted_sources or settings.default_trusted_sources
 
     all_evidence: list[EvidenceItem] = []
-    global_idx = 0  # running index across all evidence items
 
     for claim_index, claim in enumerate(claims):
         # Prefix the search query with source hints so the mock (or
@@ -60,9 +59,17 @@ def retrieve_candidate_evidence(
                     relevance_score=raw.get("relevance_score", 0.0),
                 )
             )
-            global_idx += 1
 
     logger.debug(
         "Retrieved %d evidence items for %d claims.", len(all_evidence), len(claims)
     )
     return all_evidence
+
+
+def retrieve_evidence(
+    claims: list[str],
+    trusted_sources: list[str] | None = None,
+    search_client: BaseSearchClient | None = None,
+) -> list[EvidenceItem]:
+    """Backward-compatible public name used by the API route."""
+    return retrieve_candidate_evidence(claims, trusted_sources, search_client)

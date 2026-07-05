@@ -9,6 +9,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from truthbench.config import settings
 from truthbench.runner import run_benchmark
 from truthbench.reporter import generate_markdown_report
 
@@ -63,7 +64,7 @@ def main():
         print(f"  {i}. {rec}")
 
     # Generate markdown report
-    report_path = Path("reports/generated_evaluation_report.md")
+    report_path = settings.get_report_dir() / "generated_evaluation_report.md"
     generate_markdown_report(
         dataset_name="TruthBench Evaluation Dataset",
         dataset_version="0.1.0",
