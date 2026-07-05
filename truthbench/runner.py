@@ -3,10 +3,7 @@ from __future__ import annotations
 
 import json
 import random
-import time
-from datetime import datetime
 from pathlib import Path
-from typing import List
 
 from truthbench.config import settings
 from truthbench.evaluators.claim_accuracy_evaluator import (
@@ -41,8 +38,9 @@ class TruthBenchRunner:
     """Main evaluation runner for TruthBench."""
 
     def __init__(self, dataset_path: str | None = None):
-        self.dataset_path = dataset_path or settings.get_dataset_path()
+        self.dataset_path = settings.resolve_path(dataset_path) if dataset_path else settings.get_dataset_path()
         self.dataset: EvaluationDataset | None = None
+        self._rng = random.Random(settings.evaluation_seed)
 
     def load_dataset(self) -> EvaluationDataset:
         """Load evaluation dataset from JSON file."""
@@ -50,13 +48,13 @@ class TruthBenchRunner:
         if not path.exists():
             raise FileNotFoundError(f"Dataset not found: {self.dataset_path}")
 
-        with open(path, "r", encoding="utf-8") as f:
+        with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
 
         self.dataset = EvaluationDataset(**data)
         return self.dataset
 
-    def generate_mock_predictions(self) -> List[PredictedResult]:
+    def generate_mock_predictions(self) -> list[PredictedResult]:
         """
         Generate mock predictions for testing.
 
@@ -106,7 +104,7 @@ class TruthBenchRunner:
         for exp_verdict in case.expected_verdicts:
             # Simulate correct prediction 80% of the time
             # import random
-            if random.random() < 0.8:
+            if self._rng.random() < 0.8:
                 pred_verdict = exp_verdict.verdict
                 pred_confidence = exp_verdict.confidence
             else:
@@ -119,7 +117,11 @@ class TruthBenchRunner:
                     claim_text=exp_verdict.claim_text,
                     verdict=pred_verdict,
                     confidence=pred_confidence,
-                    reasoning=exp_verdict.reasoning if pred_verdict == exp_verdict.verdict else "Mock incorrect reasoning",
+                    reasoning=(
+                        exp_verdict.reasoning
+                        if pred_verdict == exp_verdict.verdict
+                        else "Mock incorrect reasoning"
+                    ),
                 )
             )
 
@@ -147,16 +149,19 @@ class TruthBenchRunner:
             hallucination_risk_score=risk_score,
             risk_level=predicted_risk,
             citations=["wikipedia.org", "worldbank.org"] if case.expected_verdicts else [],
-            processing_time_ms=random.randint(500, 2000),
+            processing_time_ms=self._rng.randint(500, 2000),
         )
 
     def _wrong_verdict(self, correct: str) -> str:
         """Return a wrong verdict for simulation."""
         options = ["SUPPORTED", "CONTRADICTED", "NOT_ENOUGH_EVIDENCE"]
         options.remove(correct)
-        return random.choice(options)
+        return self._rng.choice(options)
 
-    def run_evaluation(self, predictions: List[PredictedResult] | None = None) -> AggregateEvaluationResult:
+    def run_evaluation(
+        self,
+        predictions: list[PredictedResult] | None = None,
+    ) -> AggregateEvaluationResult:
         """Run full evaluation on predictions."""
         if not self.dataset:
             self.load_dataset()
@@ -165,7 +170,6 @@ class TruthBenchRunner:
             predictions = self.generate_mock_predictions()
 
         case_results = []
-        all_recommendations = []
 
         for case in self.dataset.cases:
             pred = next((p for p in predictions if p.case_id == case.id), None)
@@ -199,13 +203,12 @@ class TruthBenchRunner:
             case_results.append(case_result)
 
         # Aggregate
-        aggregate = self._aggregate_results(case_results, all_recommendations)
+        aggregate = self._aggregate_results(case_results)
         return aggregate
 
     def _aggregate_results(
         self,
-        case_results: List[CaseEvaluationResult],
-        recommendations: List[str]
+        case_results: list[CaseEvaluationResult],
     ) -> AggregateEvaluationResult:
         """Aggregate case-level results into overall metrics."""
         if not case_results:
@@ -246,7 +249,7 @@ class TruthBenchRunner:
         )
         return aggregate
 
-    def _generate_recommendations(self, case_results: List[CaseEvaluationResult]) -> List[str]:
+    def _generate_recommendations(self, case_results: list[CaseEvaluationResult]) -> list[str]:
         """Generate improvement recommendations based on results."""
         recs = []
 

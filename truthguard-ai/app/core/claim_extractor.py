@@ -62,7 +62,7 @@ class BaseClaimExtractor(ABC):
         Returns:
             List of ExtractedClaim objects with text, type, confidence, and position.
         """
-        pass
+        raise NotImplementedError
 
 
 class RuleBasedClaimExtractor(BaseClaimExtractor):
@@ -138,25 +138,6 @@ class LLMClaimExtractor(BaseClaimExtractor):
         logger.info("LLMClaimExtractor: falling back to rule-based extraction")
         fallback = RuleBasedClaimExtractor()
         return fallback.extract(text)
-
-
-# Patterns that indicate factual content
-_FACTUAL_PATTERNS = [
-    r"\b(is|are|was|were|has|have|had)\b",          # copula/possession
-    r"\b(was|were)\s+\w+ed\b",                       # passive voice
-    r"\b\d+(?:,\d{3})*(?:\.\d+)?\s*(?:%|percent|million|billion|thousand)\b",  # statistics
-    r"\b(in|on|at|by|from|to|of)\s+\d{4}\b",       # dates
-    r"\baccording to\b",                              # attribution
-    r"\b(study|research|report|data|survey)\s+(?:shows?|found|indicates?)\b",  # evidence claims
-    r"\b(?:capital|population|GDP|revenue|area|height|weight)\b",  # common entities
-]
-
-# Patterns that indicate non-factual content
-_NON_FACTUAL_PATTERNS = [
-    r"^(i think|i believe|i feel|in my opinion|personally|arguably|maybe|perhaps)\b",
-    r"^(it seems|it appears|it looks like|presumably|supposedly)\b",
-    r"^(you should|we should|one should|consider|try|recommend)\b",
-]
 
 
 def extract_claims(generated_answer: str) -> list[str]:

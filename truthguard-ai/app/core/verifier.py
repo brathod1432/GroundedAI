@@ -48,9 +48,9 @@ def verify_claims(
     verdicts: list[ClaimVerdict] = []
 
     # Group evidence by claim index for efficient lookup.
-    evidence_by_claim: dict[int, list[EvidenceItem]] = {}
-    for ev in evidence_items:
-        evidence_by_claim.setdefault(ev.claim_index, []).append(ev)
+    evidence_by_claim: dict[int, list[tuple[int, EvidenceItem]]] = {}
+    for ev_idx, ev in enumerate(evidence_items):
+        evidence_by_claim.setdefault(ev.claim_index, []).append((ev_idx, ev))
 
     for claim_index, claim in enumerate(claims):
         claim_evidence = evidence_by_claim.get(claim_index, [])
@@ -72,7 +72,7 @@ def verify_claims(
         best_evidence_indices: list[int] = []
         has_contradiction = False
 
-        for ev_idx, ev in enumerate(claim_evidence):
+        for ev_idx, ev in claim_evidence:
             ev_keywords = set(extract_keywords(ev.snippet))
             overlap = claim_keywords & ev_keywords
             ratio = len(overlap) / len(claim_keywords)

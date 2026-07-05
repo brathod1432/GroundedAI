@@ -84,3 +84,31 @@ class TestVerifyClaims:
         assert len(verdicts) == 1
         # Claim 0 has no matching evidence
         assert verdicts[0].verdict == Verdict.NOT_ENOUGH_EVIDENCE
+
+    def test_evidence_indices_reference_top_level_evidence_items(self) -> None:
+        """Verdict evidence indices should point into the full evidence_items list."""
+        claims = [
+            "Paris is the capital of France.",
+            "France population million estimated.",
+        ]
+        evidence = [
+            EvidenceItem(
+                claim_index=0,
+                source="wikipedia",
+                snippet="Paris is the capital and most populous city of France.",
+                url="",
+                relevance_score=0.9,
+            ),
+            EvidenceItem(
+                claim_index=1,
+                source="wikipedia",
+                snippet="France's population was estimated at 68 million in 2023.",
+                url="",
+                relevance_score=0.9,
+            ),
+        ]
+
+        verdicts = verify_claims(claims, evidence)
+
+        assert verdicts[1].verdict == Verdict.SUPPORTED
+        assert verdicts[1].evidence_indices == [1]
