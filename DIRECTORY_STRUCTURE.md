@@ -7,11 +7,58 @@ GroundedAI/
 ├── README.md                                       # Repository overview, setup, and usage
 ├── .gitignore                                      # Root-level git exclusions
 │
-├── prompt-shield/                                  # LLM Security Proxy (Planned)
-│   └── README.md                                   #   Project concept and architecture
+├── prompt-shield/                                  # LLM Security Proxy
+│   ├── __init__.py                                 #   Package init (version metadata)
+│   ├── README.md                                   #   Project documentation
+│   ├── pyproject.toml                              #   Build config and linting rules
+│   ├── requirements.txt                            #   Python dependencies
+│   ├── .env.example                                #   Configuration template
+│   ├── .gitignore                                  #   Sub-project git exclusions
+│   ├── app/                                        #   Application package
+│   │   ├── __init__.py                             #     Package init
+│   │   ├── main.py                                 #     FastAPI entry point
+│   │   ├── config.py                               #     Pydantic Settings (SHIELD_ prefix)
+│   │   ├── schemas.py                              #     Request/response models
+│   │   ├── api/
+│   │   │   └── routes.py                           #     /health, /shield endpoints
+│   │   ├── core/
+│   │   │   ├── pii_detector.py                     #     Regex-based PII detection (6 types)
+│   │   │   ├── pii_scrubber.py                     #     PII redaction and re-injection
+│   │   │   ├── injection_detector.py               #     Prompt injection detection (12 rules)
+│   │   │   └── toxicity_filter.py                  #     Content safety filter (6 categories)
+│   │   └── services/
+│   │       └── llm_proxy.py                        #     LLM forwarding (mock/real)
+│   └── tests/                                      #   97 unit and integration tests
+│       ├── test_pii_detector.py                    #     PII detection tests
+│       ├── test_pii_scrubber.py                    #     PII scrubbing/restoration tests
+│       ├── test_injection_detector.py              #     Injection detection tests
+│       ├── test_toxicity_filter.py                 #     Toxicity filter tests
+│       └── test_app.py                             #     API integration tests
 │
-├── auto-grounder/                                  # Self-Healing Output Pipeline (Planned)
-│   └── README.md                                   #   Project concept and architecture
+├── auto-grounder/                                  # Self-Healing Output Pipeline
+│   ├── __init__.py                                 #   Package init (version metadata)
+│   ├── README.md                                   #   Project documentation
+│   ├── pyproject.toml                              #   Build config and linting rules
+│   ├── requirements.txt                            #   Python dependencies
+│   ├── .env.example                                #   Configuration template
+│   ├── .gitignore                                  #   Sub-project git exclusions
+│   ├── app/                                        #   Application package
+│   │   ├── __init__.py                             #     Package init
+│   │   ├── main.py                                 #     FastAPI entry point
+│   │   ├── config.py                               #     Pydantic Settings (GROUNDER_ prefix)
+│   │   ├── schemas.py                              #     Request/response models
+│   │   ├── api/
+│   │   │   └── routes.py                           #     /health, /ground endpoints
+│   │   ├── core/
+│   │   │   ├── corrective_prompt.py                #     Corrective prompt construction
+│   │   │   └── grounding_loop.py                   #     Iterative verify-correct-re-verify loop
+│   │   └── services/
+│   │       ├── llm_client.py                       #     LLM client (mock/OpenAI)
+│   │       └── truthguard_client.py                #     TruthGuard API client (mock/HTTP)
+│   └── tests/                                      #   20 unit and integration tests
+│       ├── test_corrective_prompt.py               #     Corrective prompt tests
+│       ├── test_grounding_loop.py                  #     Grounding loop tests
+│       └── test_app.py                             #     API integration tests
 │
 ├── truthbench/                                     # Evaluation toolkit for hallucination-reduction systems
 │   ├── __init__.py                                 #   Package init (version, author metadata)
