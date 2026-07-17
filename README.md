@@ -50,6 +50,8 @@ grounded-ai/
 
 Generated files and local-only folders such as `.venv/`, `.pytest_cache/`, `__pycache__/`, and `truthbench/reports/` are ignored and are not required source files.
 
+For a detailed annotated directory tree, see [DIRECTORY_STRUCTURE.md](./DIRECTORY_STRUCTURE.md).
+
 ## Setup
 
 Use Python 3.11 or newer.
