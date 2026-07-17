@@ -7,6 +7,12 @@ GroundedAI/
 ├── README.md                                       # Repository overview, setup, and usage
 ├── .gitignore                                      # Root-level git exclusions
 │
+├── prompt-shield/                                  # LLM Security Proxy (Planned)
+│   └── README.md                                   #   Project concept and architecture
+│
+├── auto-grounder/                                  # Self-Healing Output Pipeline (Planned)
+│   └── README.md                                   #   Project concept and architecture
+│
 ├── truthbench/                                     # Evaluation toolkit for hallucination-reduction systems
 │   ├── __init__.py                                 #   Package init (version, author metadata)
 │   ├── config.py                                   #   Pydantic Settings configuration
