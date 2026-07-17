@@ -4,8 +4,8 @@ Grounded AI is a small local-first repository for experimenting with grounded ve
 
 - `truthbench`: an evaluation toolkit for measuring hallucination-verification behavior against labeled datasets.
 - `truthguard-ai`: a FastAPI service that extracts claims from generated answers, retrieves evidence, verifies claims, and returns a hallucination-risk report.
-- `prompt-shield`: a planned LLM security proxy for PII scrubbing and prompt injection detection.
-- `auto-grounder`: a planned automated remediation pipeline that closes the loop by auto-correcting hallucinated outputs.
+- `prompt-shield`: an LLM security proxy for PII scrubbing, prompt injection detection, and toxicity filtering.
+- `auto-grounder`: an automated remediation pipeline that closes the loop by auto-correcting hallucinated outputs.
 
 The prompt-level names `truth-bench` and `truth-guard` map to the actual folders `truthbench` and `truthguard-ai` in this repository.
 

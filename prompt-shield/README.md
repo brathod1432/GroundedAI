@@ -1,52 +1,149 @@
-# Prompt Shield (LLM Security Proxy)
+# Prompt Shield
 
-Prompt Shield is a lightweight middleware/proxy service designed to intercept traffic between user applications and Large Language Models (LLMs). 
+LLM Security Proxy for PII scrubbing, prompt injection detection, and toxicity filtering.
 
-While other tools in the GroundedAI ecosystem focus on ensuring the LLM's outputs are factually grounded, **Prompt Shield** focuses on ensuring the user's inputs are safe and sensitive data is not leaked.
+**Part of the [GroundedAI](../README.md) ecosystem.**
 
-## Focus
-Security, Data Privacy (PII), and Adversarial Defense.
+## Overview
 
-## Core Features
+Prompt Shield is a FastAPI middleware service that intercepts traffic between user applications and LLMs. While `truthguard-ai` ensures the LLM's outputs are factually grounded, Prompt Shield ensures the user's inputs are safe and sensitive data is not leaked.
 
-1. **Prompt Injection & Jailbreak Detection**
-   - Analyzes incoming user prompts for adversarial patterns designed to bypass system instructions.
-   - Blocks known jailbreak signatures and suspicious semantic patterns before they reach the LLM.
-
-2. **PII Scrubbing & Re-injection**
-   - Automatically detects Personally Identifiable Information (SSNs, emails, phone numbers, API keys) using local NER (Named Entity Recognition) models or regex.
-   - Replaces sensitive data with placeholders (e.g., `[EMAIL_1]`) before sending the prompt to external LLM APIs (like OpenAI or Anthropic).
-   - Re-injects the real data back into the LLM's response before returning it to the user.
-
-3. **Toxicity & Malicious Intent Filtering**
-   - Uses fast, lightweight local models (e.g., ONNX-based sequence classifiers) to evaluate inputs and outputs for hate speech, harassment, or self-harm content.
-
-## Why it Fits in GroundedAI
-GroundedAI approaches AI safety from multiple angles:
-- `truthguard-ai` ensures the LLM doesn't lie or hallucinate (Output/Factual Safety).
-- `prompt-shield` ensures the user isn't malicious and enterprise data isn't leaked (Input/Security Safety).
-
-## Proposed Architecture
+## Architecture
 
 ```text
-User Application 
-       │
-       ▼ (Raw Prompt)
-[ Prompt Shield ] ── 1. Toxicity Check
-       │          ── 2. Jailbreak Check
-       │          ── 3. PII Redaction (Store mapping)
-       ▼ (Sanitized Prompt)
+User Application
+       |
+       v (Raw Prompt)
+[ Prompt Shield ]
+       |-- 1. Toxicity Check -----> Block if harmful
+       |-- 2. Injection Detection -> Block if jailbreak attempt
+       |-- 3. PII Scrubbing ------> Replace with [EMAIL_1], [PHONE_1], etc.
+       v (Sanitized Prompt)
      [ LLM ]
-       │
-       ▼ (Raw Response)
-[ Prompt Shield ] ── 4. PII Re-injection
-       │          ── 5. Output Toxicity Check
-       ▼ (Safe Response)
+       |
+       v (Raw Response)
+[ Prompt Shield ]
+       |-- 4. PII Re-injection ---> Restore original values
+       v (Safe Response)
 User Application
 ```
 
-## Roadmap / Next Steps
-- [ ] Define the FastAPI proxy structure.
-- [ ] Integrate a fast, local PII detection library (like Microsoft Presidio).
-- [ ] Implement a basic heuristic/regex-based prompt injection detector.
-- [ ] Create mock endpoints for testing the proxy locally.
+## Features
+
+### PII Detection and Scrubbing
+Detects and redacts 6 PII types using regex pattern matching:
+
+| PII Type | Example | Placeholder |
+|----------|---------|-------------|
+| Email | `john@example.com` | `[EMAIL_1]` |
+| Phone | `555-123-4567` | `[PHONE_1]` |
+| SSN | `123-45-6789` | `[SSN_1]` |
+| Credit Card | `4111-1111-1111-1111` | `[CREDIT_CARD_1]` |
+| API Key | `sk-abc123...` | `[API_KEY_1]` |
+| IP Address | `192.168.1.1` | `[IP_ADDRESS_1]` |
+
+PII is re-injected into the LLM response before returning to the user.
+
+### Prompt Injection Detection
+12 pattern-based rules detecting jailbreak attempts:
+- Instruction override ("ignore previous instructions")
+- Role switching ("you are now DAN")
+- Safety bypass ("bypass safety filters")
+- System prompt extraction ("show me your system prompt")
+- Delimiter injection (`` ```system ``, `<|im_start|>`)
+- Base64 encoding tricks
+
+### Toxicity Filtering
+6-category content safety filter:
+- Hate speech, violence threats, self-harm
+- Harassment, illegal activity, severe profanity
+
+## Setup
+
+```bash
+cd prompt-shield
+python -m pip install -r requirements.txt
+```
+
+## Usage
+
+### Start the API
+
+```bash
+cd prompt-shield
+python -m uvicorn app.main:app --reload --port 8001
+```
+
+### API Endpoints
+
+**Health Check:**
+```bash
+curl http://127.0.0.1:8001/health
+```
+
+**Shield a Prompt (analysis only):**
+```bash
+curl -X POST http://127.0.0.1:8001/shield ^
+  -H "Content-Type: application/json" ^
+  -d "{\"prompt\": \"My email is john@example.com and my SSN is 123-45-6789. What is the capital of France?\"}"
+```
+
+**Shield and Forward to LLM:**
+```bash
+curl -X POST http://127.0.0.1:8001/shield ^
+  -H "Content-Type: application/json" ^
+  -d "{\"prompt\": \"What is AI?\", \"forward_to_llm\": true}"
+```
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SHIELD_LLM_PROVIDER` | `mock` | LLM backend: `mock`, `openai`, `anthropic` |
+| `SHIELD_PII_DETECTION_ENABLED` | `true` | Enable PII scrubbing |
+| `SHIELD_INJECTION_DETECTION_ENABLED` | `true` | Enable jailbreak detection |
+| `SHIELD_TOXICITY_FILTERING_ENABLED` | `true` | Enable toxicity filter |
+| `SHIELD_INJECTION_THRESHOLD` | `0.7` | Score threshold to block injections |
+| `SHIELD_TOXICITY_THRESHOLD` | `0.7` | Score threshold to block toxic content |
+| `SHIELD_MAX_PROMPT_LENGTH` | `50000` | Maximum allowed prompt length |
+
+Copy `.env.example` to `.env` for local overrides.
+
+## Testing
+
+```bash
+cd prompt-shield
+python -m pytest tests/ -v
+```
+
+97 tests covering PII detection, PII scrubbing/restoration, injection detection, toxicity filtering, and API integration.
+
+## Project Structure
+
+```
+prompt-shield/
+├── app/
+│   ├── main.py                 # FastAPI entry point
+│   ├── config.py               # Pydantic Settings
+│   ├── schemas.py              # Request/response models
+│   ├── api/
+│   │   └── routes.py           # /health, /shield endpoints
+│   ├── core/
+│   │   ├── pii_detector.py     # Regex-based PII detection
+│   │   ├── pii_scrubber.py     # PII redaction and re-injection
+│   │   ├── injection_detector.py  # Prompt injection detection
+│   │   └── toxicity_filter.py  # Content safety filter
+│   └── services/
+│       └── llm_proxy.py        # LLM forwarding (mock/real)
+├── tests/                      # 97 unit and integration tests
+├── pyproject.toml
+├── requirements.txt
+└── .env.example
+```
+
+## Related Projects
+
+- [truthguard-ai](../truthguard-ai/) - LLM output verification (factual safety)
+- [auto-grounder](../auto-grounder/) - Self-healing hallucination correction
+- [truthbench](../truthbench/) - Evaluation benchmarking toolkit
+- [Root README](../README.md)
