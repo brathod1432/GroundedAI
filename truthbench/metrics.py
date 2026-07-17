@@ -1,12 +1,10 @@
 """Core metric functions for TruthBench evaluation."""
 from __future__ import annotations
 
-from typing import List
-
 from truthbench.schemas import PredictedVerdict, Verdict
 
 
-def accuracy_score(y_true: List[str], y_pred: List[str]) -> float:
+def accuracy_score(y_true: list[str], y_pred: list[str]) -> float:
     """Compute accuracy: correct predictions / total predictions."""
     if not y_true or not y_pred:
         return 0.0
@@ -14,7 +12,7 @@ def accuracy_score(y_true: List[str], y_pred: List[str]) -> float:
     return correct / len(y_true)
 
 
-def precision_score(y_true: List[str], y_pred: List[str], positive_class: str = "SUPPORTED") -> float:
+def precision_score(y_true: list[str], y_pred: list[str], positive_class: str = "SUPPORTED") -> float:
     """Compute precision for a specific class: TP / (TP + FP)."""
     if not y_true or not y_pred:
         return 0.0
@@ -23,7 +21,7 @@ def precision_score(y_true: List[str], y_pred: List[str], positive_class: str = 
     return tp / (tp + fp) if (tp + fp) > 0 else 0.0
 
 
-def recall_score(y_true: List[str], y_pred: List[str], positive_class: str = "SUPPORTED") -> float:
+def recall_score(y_true: list[str], y_pred: list[str], positive_class: str = "SUPPORTED") -> float:
     """Compute recall for a specific class: TP / (TP + FN)."""
     if not y_true or not y_pred:
         return 0.0
@@ -32,14 +30,14 @@ def recall_score(y_true: List[str], y_pred: List[str], positive_class: str = "SU
     return tp / (tp + fn) if (tp + fn) > 0 else 0.0
 
 
-def f1_score(y_true: List[str], y_pred: List[str], positive_class: str = "SUPPORTED") -> float:
+def f1_score(y_true: list[str], y_pred: list[str], positive_class: str = "SUPPORTED") -> float:
     """Compute F1 score for a specific class."""
     prec = precision_score(y_true, y_pred, positive_class)
     rec = recall_score(y_true, y_pred, positive_class)
     return 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
 
 
-def macro_f1_score(y_true: List[str], y_pred: List[str], classes: List[str] | None = None) -> float:
+def macro_f1_score(y_true: list[str], y_pred: list[str], classes: list[str] | None = None) -> float:
     """Compute macro-averaged F1 across all classes."""
     if classes is None:
         classes = ["SUPPORTED", "CONTRADICTED", "NOT_ENOUGH_EVIDENCE"]
@@ -47,7 +45,7 @@ def macro_f1_score(y_true: List[str], y_pred: List[str], classes: List[str] | No
     return sum(f1s) / len(f1s) if f1s else 0.0
 
 
-def hallucination_rate(verdicts: List[PredictedVerdict]) -> float:
+def hallucination_rate(verdicts: list[PredictedVerdict]) -> float:
     """
     Compute hallucination rate: fraction of claims that are CONTRADICTED or NOT_ENOUGH_EVIDENCE.
 
@@ -70,7 +68,7 @@ def citation_coverage_score(supported_claims: int, supported_with_citations: int
     return min(supported_with_citations / supported_claims, 1.0)
 
 
-def risk_level_match_rate(expected: List[str], predicted: List[str]) -> float:
+def risk_level_match_rate(expected: list[str], predicted: list[str]) -> float:
     """Compute fraction of cases where predicted risk level matches expected."""
     if not expected or not predicted:
         return 0.0

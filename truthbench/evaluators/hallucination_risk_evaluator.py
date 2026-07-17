@@ -1,7 +1,7 @@
 """Hallucination risk evaluator - evaluates predicted risk levels against expected."""
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Tuple
 
 from truthbench.schemas import EvaluationCase, PredictedResult, PredictedVerdict, RiskLevel, Verdict
 
@@ -16,7 +16,7 @@ RISK_SCORE_MAP = {
 def evaluate_hallucination_risk(
     expected: EvaluationCase,
     predicted: PredictedResult
-) -> Tuple[bool, float, List[str]]:
+) -> Tuple[bool, float, list[str]]:
     """
     Evaluate if predicted hallucination risk matches expected.
 

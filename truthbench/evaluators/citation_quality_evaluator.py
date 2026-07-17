@@ -1,7 +1,7 @@
 """Citation quality evaluator - evaluates whether each claim has citation support."""
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Tuple
 
 from truthbench.schemas import EvaluationCase, PredictedResult, Verdict
 
@@ -20,7 +20,7 @@ def citation_coverage_score(supported_claims: int, supported_with_citations: int
 def evaluate_citation_quality(
     expected: EvaluationCase,
     predicted: PredictedResult
-) -> Tuple[float, List[str]]:
+) -> Tuple[float, list[str]]:
     """
     Evaluate citation quality for a case.
 

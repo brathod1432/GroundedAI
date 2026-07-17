@@ -1,7 +1,7 @@
 """Verdict consistency evaluator - evaluates whether predicted verdicts match expected verdicts."""
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Tuple
 
 from truthbench.schemas import EvaluationCase, PredictedResult, Verdict
 
@@ -9,7 +9,7 @@ from truthbench.schemas import EvaluationCase, PredictedResult, Verdict
 def evaluate_verdict_consistency(
     expected: EvaluationCase,
     predicted: PredictedResult
-) -> Tuple[float, float, float, float, List[str]]:
+) -> Tuple[float, float, float, float, list[str]]:
     """
     Evaluate verdict prediction accuracy, precision, recall, F1.
 

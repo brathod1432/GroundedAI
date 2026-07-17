@@ -1,7 +1,7 @@
 """Claim accuracy evaluator - evaluates whether extracted claims match expected claims."""
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Tuple
 
 from truthbench.schemas import EvaluationCase, PredictedResult, PredictedClaim
 
@@ -9,7 +9,7 @@ from truthbench.schemas import EvaluationCase, PredictedResult, PredictedClaim
 def evaluate_claim_accuracy(
     expected: EvaluationCase,
     predicted: PredictedResult
-) -> Tuple[float, float, float, float, List[str]]:
+) -> Tuple[float, float, float, float, list[str]]:
     """
     Evaluate claim extraction accuracy.
 

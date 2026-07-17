@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -39,9 +39,9 @@ class EvaluationCase(BaseModel):
     id: str = Field(..., description="Unique identifier for this test case")
     original_question: str = Field(..., description="The original user question")
     generated_answer: str = Field(..., description="The LLM-generated answer to evaluate")
-    expected_claims: List[ExpectedClaim] = Field(default_factory=list, description="Claims that should be extracted")
-    expected_verdicts: List[ExpectedVerdict] = Field(default_factory=list, description="Expected verdicts for each claim")
-    trusted_reference_evidence: List[str] = Field(default_factory=list, description="Reference evidence sources")
+    expected_claims: list[ExpectedClaim] = Field(default_factory=list, description="Claims that should be extracted")
+    expected_verdicts: list[ExpectedVerdict] = Field(default_factory=list, description="Expected verdicts for each claim")
+    trusted_reference_evidence: list[str] = Field(default_factory=list, description="Reference evidence sources")
     expected_risk_level: RiskLevel = Field(..., description="Expected overall risk level")
     notes: str = Field(default="", description="Additional notes about this test case")
 
@@ -51,7 +51,7 @@ class EvaluationDataset(BaseModel):
     name: str = Field(default="TruthBench Evaluation Dataset", description="Dataset name")
     version: str = Field(default="0.1.0", description="Dataset version")
     description: str = Field(default="", description="Dataset description")
-    cases: List[EvaluationCase] = Field(..., description="List of evaluation cases")
+    cases: list[EvaluationCase] = Field(..., description="List of evaluation cases")
 
 
 # Prediction models (what the system under test produces)
@@ -70,18 +70,18 @@ class PredictedVerdict(BaseModel):
     claim_text: str = Field(..., description="The claim this verdict applies to")
     verdict: Verdict = Field(..., description="Predicted verdict")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    evidence_indices: List[int] = Field(default_factory=list)
+    evidence_indices: list[int] = Field(default_factory=list)
     reasoning: str = Field(default="")
 
 
 class PredictedResult(BaseModel):
     """Complete prediction result from the system under test."""
     case_id: str = Field(..., description="ID of the evaluation case")
-    extracted_claims: List[PredictedClaim] = Field(default_factory=list)
-    predicted_verdicts: List[PredictedVerdict] = Field(default_factory=list)
+    extracted_claims: list[PredictedClaim] = Field(default_factory=list)
+    predicted_verdicts: list[PredictedVerdict] = Field(default_factory=list)
     hallucination_risk_score: float = Field(default=0.0, ge=0.0, le=1.0)
     risk_level: RiskLevel = Field(default=RiskLevel.LOW)
-    citations: List[str] = Field(default_factory=list)
+    citations: list[str] = Field(default_factory=list)
     processing_time_ms: int = Field(default=0)
 
 
@@ -98,7 +98,7 @@ class CaseEvaluationResult(BaseModel):
     hallucination_rate: float = Field(..., ge=0.0, le=1.0)
     citation_coverage: float = Field(..., ge=0.0, le=1.0)
     risk_level_match: bool
-    failed_checks: List[str] = Field(default_factory=list)
+    failed_checks: list[str] = Field(default_factory=list)
 
 
 class AggregateEvaluationResult(BaseModel):
@@ -115,8 +115,8 @@ class AggregateEvaluationResult(BaseModel):
     risk_level_match_rate: float
     passed_cases: int
     failed_cases: int
-    case_results: List[CaseEvaluationResult]
-    recommendations: List[str] = Field(default_factory=list)
+    case_results: list[CaseEvaluationResult]
+    recommendations: list[str] = Field(default_factory=list)
 
 
 class EvaluationReport(BaseModel):
