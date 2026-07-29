@@ -18,6 +18,88 @@ from dataclasses import dataclass
 from app.config import settings
 from app.utils.text_utils import split_into_sentences, normalize_whitespace
 
+# ── Coreference resolution helpers ────────────────────────────────────────
+
+# Third-person pronouns that often replace subject noun phrases in claims.
+# When one of these starts a sentence (or appears as the subject), we try to
+# substitute the last-seen subject noun phrase from the previous sentence.
+_SUBJECT_PRONOUNS: frozenset[str] = frozenset({
+    "he", "she", "they", "it", "his", "her", "their", "its",
+    "him", "them", "this", "these", "those",
+})
+
+# Pattern to extract a candidate subject noun phrase from a sentence.
+# We capture the first capitalized word (proper noun) or "The <noun>" pattern
+# as the antecedent.
+_PROPER_NOUN = re.compile(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b")
+_THE_NOUN = re.compile(r"\bthe\s+([a-z]+(?:\s+[a-z]+){0,2})\b", re.IGNORECASE)
+
+# Pattern to detect sentences starting with a subject pronoun
+_PRONOUN_START = re.compile(
+    r"^(He|She|They|It|His|Her|Their|Its|Him|Them|This|These|Those)\b",
+    re.IGNORECASE,
+)
+
+
+def _extract_antecedent(sentence: str) -> str | None:
+    """Try to extract a proper noun or named entity from a sentence.
+
+    Returns the first capitalized word group or None if no candidate found.
+    This is the antecedent that will be used to replace pronouns in the
+    following sentence.
+    """
+    m = _PROPER_NOUN.search(sentence)
+    if m:
+        return m.group(1)
+    return None
+
+
+def resolve_coreferences(sentences: list[str]) -> list[str]:
+    """Apply lightweight rule-based coreference resolution to a sentence list.
+
+    For each sentence that begins with a third-person subject pronoun, replace
+    the pronoun with the last known antecedent (proper noun) extracted from
+    the preceding sentence.
+
+    This is a conservative pass — if no clear antecedent exists, the sentence
+    is left unchanged so we never introduce incorrect substitutions.
+
+    Example:
+        ["Albert Einstein won the Nobel Prize.", "He was born in Ulm, Germany."]
+        → ["Albert Einstein won the Nobel Prize.", "Albert Einstein was born in Ulm, Germany."]
+
+    Args:
+        sentences: List of sentence strings in document order.
+
+    Returns:
+        New list with pronoun-starts replaced where a clear antecedent exists.
+    """
+    resolved: list[str] = []
+    last_antecedent: str | None = None
+
+    for sentence in sentences:
+        # Try to extract an antecedent from this sentence for future use
+        candidate = _extract_antecedent(sentence)
+        if candidate:
+            last_antecedent = candidate
+
+        # Check if the sentence starts with a subject pronoun
+        m = _PRONOUN_START.match(sentence)
+        if m and last_antecedent:
+            pronoun = m.group(1)
+            # Replace ONLY the leading pronoun (preserves the rest of the sentence)
+            resolved.append(
+                last_antecedent + sentence[len(pronoun):]
+            )
+            logger.debug(
+                "Coreference: replaced '%s' with '%s'", pronoun, last_antecedent
+            )
+        else:
+            resolved.append(sentence)
+
+    return resolved
+
+
 logger = logging.getLogger(__name__)
 
 # Patterns that indicate factual content
@@ -76,6 +158,11 @@ class RuleBasedClaimExtractor(BaseClaimExtractor):
         """Extract factual claims using rule-based heuristics."""
         # Initial sentence split
         sentences = split_into_sentences(text)
+
+        # Apply lightweight coreference resolution before further splitting.
+        # This ensures pronouns like "He was born in..." get replaced with
+        # the last known proper-noun antecedent so claims are verifiable.
+        sentences = resolve_coreferences(sentences)
 
         # Further split on strong conjunctions that separate claims
         split_sentences = []

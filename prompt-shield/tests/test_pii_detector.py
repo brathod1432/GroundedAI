@@ -116,3 +116,33 @@ class TestDetectPII:
         assert hasattr(m, "value")
         assert hasattr(m, "start")
         assert hasattr(m, "end")
+
+    # ── IPv6 detection ───────────────────────────────────────────────
+
+    def test_detects_ipv6_address(self):
+        result = detect_pii("Server at 2001:0db8:85a3:0000:0000:8a2e:0370:7334")
+        assert any(m.pii_type == "ipv6" for m in result)
+
+    # ── IBAN detection ───────────────────────────────────────────────
+
+    def test_detects_iban(self):
+        result = detect_pii("Transfer to GB29NWBK60161331926819")
+        assert any(m.pii_type == "iban" for m in result)
+
+    # ── Token-in-URL detection ───────────────────────────────────────
+
+    def test_detects_token_in_url(self):
+        result = detect_pii("https://api.example.com?token=abcdefghijklmnop123")
+        assert any(m.pii_type == "token_in_url" for m in result)
+
+    # ── Luhn validation ──────────────────────────────────────────────
+
+    def test_rejects_invalid_luhn_credit_card(self):
+        # 1234-5678-9012-3456 fails Luhn check
+        result = detect_pii("card: 1234-5678-9012-3456")
+        assert not any(m.pii_type == "credit_card" for m in result)
+
+    def test_accepts_valid_luhn_credit_card(self):
+        # 4532-0151-1283-0366 is a valid Luhn test card number (Visa test number)
+        result = detect_pii("card: 4532-0151-1283-0366")
+        assert any(m.pii_type == "credit_card" for m in result)

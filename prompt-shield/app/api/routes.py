@@ -121,7 +121,8 @@ def shield(request: ShieldRequest) -> ShieldResponse:
         pii_entities = [
             PIIEntity(
                 pii_type=m.pii_type,
-                original=m.value,
+                # original value intentionally excluded from response — stored
+                # server-side only in pii_mapping for internal re-injection
                 placeholder=ph,
                 start=m.start,
                 end=m.end,

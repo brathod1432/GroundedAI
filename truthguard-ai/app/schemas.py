@@ -40,10 +40,12 @@ class VerifyRequest(BaseModel):
             ``settings.default_trusted_sources`` when omitted.
     """
     original_question: str = Field(
-        ..., min_length=1, description="The user's original question or prompt."
+        ..., min_length=1, max_length=5000,
+        description="The user's original question or prompt.",
     )
     generated_answer: str = Field(
-        ..., min_length=1, description="The LLM-generated answer to verify."
+        ..., min_length=1, max_length=50000,
+        description="The LLM-generated answer to verify.",
     )
     trusted_sources: list[str] | None = Field(
         default=None,

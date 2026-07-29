@@ -16,15 +16,19 @@ class RiskLevel(str, Enum):
 
 
 class PIIEntity(BaseModel):
-    """A detected PII entity."""
+    """A detected PII entity.
+
+    The original PII value is intentionally NOT included in the API response
+    to prevent accidental exposure in logs, monitoring tools, or API gateways.
+    Only the type, placeholder, and position are returned.
+    """
 
     pii_type: str = Field(
         ..., description="Type: email, phone, ssn, credit_card, api_key, ip_address"
     )
-    original: str = Field(..., description="Original PII value found")
     placeholder: str = Field(..., description="Placeholder used in sanitized text")
-    start: int = Field(..., ge=0)
-    end: int = Field(..., ge=0)
+    start: int = Field(..., ge=0, description="Start character offset in original text")
+    end: int = Field(..., ge=0, description="End character offset in original text")
 
 
 class InjectionResult(BaseModel):

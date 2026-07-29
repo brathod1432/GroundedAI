@@ -13,6 +13,7 @@ from fastapi import APIRouter
 from app.config import settings
 from app.core.grounding_loop import run_grounding_loop
 from app.schemas import GroundRequest, GroundResponse
+from app.utils.log_utils import safe_preview, content_hash
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,9 @@ def ground(request: GroundRequest) -> GroundResponse:
         If the input fails Pydantic validation (handled by FastAPI).
     """
     logger.info(
-        "Grounding request received — question: '%s…'",
-        request.question[:60],
+        "Grounding request received — question: '%s' [%s]",
+        safe_preview(request.question),
+        content_hash(request.question),
     )
 
     result = run_grounding_loop(

@@ -35,6 +35,11 @@ truthguard-ai/reports/
 *.log
 logs/
 
+# Runtime data (SQLite feedback DB, generated artifacts)
+data/
+*.db
+*.sqlite3
+
 # IDE and OS files
 .idea/
 .vscode/
