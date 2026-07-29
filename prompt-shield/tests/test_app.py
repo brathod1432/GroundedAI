@@ -100,10 +100,22 @@ class TestShieldEndpointPII:
         assert len(entities) >= 1
         entity = entities[0]
         assert "pii_type" in entity
-        assert "original" in entity
+        # 'original' is intentionally excluded from the response to prevent PII leakage
+        assert "original" not in entity
         assert "placeholder" in entity
         assert "start" in entity
         assert "end" in entity
+
+    def test_pii_original_value_not_in_response(self):
+        """Verify that raw PII values are never returned in API responses."""
+        data = client.post(
+            "/shield",
+            json={"prompt": "My SSN is 123-45-6789 and email is secret@corp.com"},
+        ).json()
+        # The full response JSON should not contain the actual PII values
+        response_text = str(data)
+        assert "123-45-6789" not in response_text
+        assert "secret@corp.com" not in response_text
 
 
 class TestShieldEndpointInjection:

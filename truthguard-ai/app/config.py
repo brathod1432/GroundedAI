@@ -5,6 +5,7 @@ or sensible defaults. No real API keys are required — the mock backends
 work without them.
 """
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -20,17 +21,21 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
 
+    # ── API authentication (empty = no auth required, dev-mode default) ─
+    # Set TRUTHGUARD_API_KEY to require X-API-Key header on all endpoints.
+    api_key: SecretStr = SecretStr("")
+
     # ── LLM backend ─────────────────────────────────────────────────────
     llm_provider: str = "mock"  # "mock" | "openai" | "anthropic"
-    openai_api_key: str = ""
+    openai_api_key: SecretStr = SecretStr("")   # was str; SecretStr prevents logging
     openai_model: str = "gpt-4o-mini"
-    anthropic_api_key: str = ""
+    anthropic_api_key: SecretStr = SecretStr("")
     anthropic_model: str = "claude-sonnet-4-20250514"
 
     # ── Search / evidence backend ───────────────────────────────────────
     search_provider: str = "mock"  # "mock" | "tavily" | "serpapi"
-    tavily_api_key: str = ""
-    serpapi_api_key: str = ""
+    tavily_api_key: SecretStr = SecretStr("")
+    serpapi_api_key: SecretStr = SecretStr("")
 
     # ── Verification defaults ────────────────────────────────────────────
     default_trusted_sources: list[str] = ["wikipedia", "world-bank"]

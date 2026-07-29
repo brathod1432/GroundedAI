@@ -1,8 +1,101 @@
-"""Prompt injection and jailbreak detection engine."""
+"""Prompt injection and jailbreak detection engine.
+
+SECURITY: Applies normalization before scanning to catch obfuscated attacks:
+  - Unicode NFKC normalization catches homoglyph substitutions (е→e, і→i, etc.)
+  - Zero-width character stripping removes invisible separator tricks.
+  - Base64 blob decoding catches payloads encoded to bypass text filters.
+  - Both the original and normalized forms are scanned; the worst score wins.
+"""
 from __future__ import annotations
 
+import base64
 import re
+import unicodedata
 from dataclasses import dataclass
+
+# Regex to identify probable base64 blobs (at least 20 chars, typical padding)
+_BASE64_BLOB = re.compile(r"[A-Za-z0-9+/]{20,}(?:={0,2})")
+
+# Zero-width and invisible Unicode characters used to split keywords
+_ZERO_WIDTH_CHARS = re.compile(
+    r"[\u200b\u200c\u200d\u200e\u200f\u202a\u202b\u202c\u202d\u202e\ufeff\u2060]"
+)
+
+
+# Visual homoglyph mapping: characters that look like ASCII letters but are
+# from other scripts (Cyrillic, Greek, etc.) and used in injection attacks.
+# Maps non-ASCII Unicode code points to their ASCII visual equivalents.
+_HOMOGLYPH_TABLE: dict[int, str] = {
+    # Cyrillic
+    0x0430: "a",  # а → a
+    0x0435: "e",  # е → e
+    0x043E: "o",  # о → o
+    0x0440: "r",  # р → r
+    0x0441: "c",  # с → c
+    0x0443: "y",  # у → y
+    0x0445: "x",  # х → x
+    0x0456: "i",  # і → i
+    0x0404: "E",  # Є → E
+    0x0406: "I",  # І → I
+    0x0410: "A",  # А → A
+    0x0412: "B",  # В → B
+    0x0415: "E",  # Е → E
+    0x041A: "K",  # К → K
+    0x041C: "M",  # М → M
+    0x041D: "H",  # Н → H
+    0x041E: "O",  # О → O
+    0x0420: "P",  # Р → P
+    0x0421: "C",  # С → C
+    0x0422: "T",  # Т → T
+    0x0425: "X",  # Х → X
+    # Greek
+    0x03B1: "a",  # α → a
+    0x03BF: "o",  # ο → o
+    0x03C1: "p",  # ρ → p
+    0x03B9: "i",  # ι → i
+    0x03BA: "k",  # κ → k
+}
+_HOMOGLYPH_TRANS = str.maketrans(_HOMOGLYPH_TABLE)
+
+
+def _normalize_for_scan(text: str) -> str:
+    """Return a normalized version of *text* for injection scanning.
+
+    Performs four passes:
+    1. NFKC normalization — collapses compatibility characters.
+    2. Confusables mapping — replaces visual homoglyphs (Cyrillic, Greek)
+       with their ASCII equivalents (catches е→e, і→i, etc.).
+    3. Zero-width character removal — removes invisible separators used to
+       split injection keywords (e.g., ``ig​nore`` → ``ignore``).
+    4. Base64 decoding — any blob that successfully decodes to ASCII is
+       appended so its plain-text content is also scanned.
+    """
+    # Pass 1: unicode normalization
+    normalized = unicodedata.normalize("NFKC", text)
+
+    # Pass 2: visual homoglyph replacement
+    normalized = normalized.translate(_HOMOGLYPH_TRANS)
+
+    # Pass 3: strip zero-width chars
+    normalized = _ZERO_WIDTH_CHARS.sub("", normalized)
+
+    # Pass 4: attempt to decode base64 blobs and append decoded content
+    extra_parts: list[str] = []
+    for blob in _BASE64_BLOB.findall(normalized):
+        # Add padding if necessary before decoding
+        padded = blob + "=" * ((4 - len(blob) % 4) % 4)
+        try:
+            decoded = base64.b64decode(padded).decode("utf-8", errors="ignore")
+            # Only append if the decoded text contains printable ASCII content
+            if decoded.isprintable() and len(decoded) >= 10:
+                extra_parts.append(decoded)
+        except Exception:
+            pass
+
+    if extra_parts:
+        normalized = normalized + " " + " ".join(extra_parts)
+
+    return normalized
 
 # Each pattern has a name, regex, and weight (contribution to risk score)
 _INJECTION_RULES: list[tuple[str, re.Pattern[str], float]] = [
@@ -84,8 +177,20 @@ class _MatchDetail:
     weight: float
 
 
+def _scan_text(text: str) -> list[_MatchDetail]:
+    """Run all injection rules against *text* and return matched details."""
+    matched: list[_MatchDetail] = []
+    for rule_name, pattern, weight in _INJECTION_RULES:
+        if pattern.search(text):
+            matched.append(_MatchDetail(rule_name=rule_name, matched_text=pattern.pattern, weight=weight))
+    return matched
+
+
 def detect_injection(text: str, threshold: float = 0.7) -> InjectionAnalysis:
     """Analyze text for prompt injection patterns.
+
+    Scans both the raw text AND a normalized form (NFKC + zero-width strip +
+    base64 decoding) so that obfuscated injection payloads are caught.
 
     The risk score is the maximum weight among all matched patterns.
     A text is classified as injection if risk_score >= threshold.
@@ -93,10 +198,20 @@ def detect_injection(text: str, threshold: float = 0.7) -> InjectionAnalysis:
     if not text or not text.strip():
         return InjectionAnalysis(is_injection=False, risk_score=0.0, matched_patterns=[])
 
+    # Scan the original text
+    matched_raw = _scan_text(text)
+
+    # Scan the normalized form (catches obfuscated/encoded attacks)
+    normalized = _normalize_for_scan(text)
+    matched_norm = _scan_text(normalized) if normalized != text else []
+
+    # Merge: collect all unique rule names that matched either form
+    seen_rules: set[str] = set()
     matched: list[_MatchDetail] = []
-    for rule_name, pattern, weight in _INJECTION_RULES:
-        if pattern.search(text):
-            matched.append(_MatchDetail(rule_name=rule_name, matched_text=pattern.pattern, weight=weight))
+    for detail in matched_raw + matched_norm:
+        if detail.rule_name not in seen_rules:
+            seen_rules.add(detail.rule_name)
+            matched.append(detail)
 
     if not matched:
         return InjectionAnalysis(is_injection=False, risk_score=0.0, matched_patterns=[])

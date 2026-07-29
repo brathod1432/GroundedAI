@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -11,9 +12,13 @@ class Settings(BaseSettings):
     app_name: str = "Prompt Shield"
     app_version: str = "0.1.0"
 
+    # API authentication (empty = no auth required, dev-mode default)
+    # Set SHIELD_API_KEY to require X-API-Key header on all endpoints.
+    api_key: SecretStr = SecretStr("")
+
     # LLM provider: mock, openai, anthropic
     llm_provider: str = "mock"
-    openai_api_key: str = ""
+    openai_api_key: SecretStr = SecretStr("")   # SecretStr prevents accidental logging
     openai_model: str = "gpt-4o-mini"
 
     # Feature toggles

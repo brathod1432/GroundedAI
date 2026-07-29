@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import logging
 
+from app.core.numerical_checker import check_numerical_conflict
 from app.schemas import ClaimVerdict, EvidenceItem, Verdict
+from app.services.similarity import best_similarity, keyword_overlap_ratio
 from app.utils.text_utils import extract_keywords
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,14 @@ logger = logging.getLogger(__name__)
 # These are tunable constants — in a real system they'd be calibrated
 # against a labelled evaluation set.
 _SUPPORTED_THRESHOLD = 0.30   # ≥30% keyword overlap → SUPPORTED
-_CONTRADICTED_KEYWORDS = {"false", "incorrect", "wrong", "not", "never", "no", "denied", "debunked"}
+
+# Only strong debunking signals trigger CONTRADICTED in the verifier.
+# Weak negations ('not', 'no', 'never') are excluded here to prevent
+# false positives — they are handled with context by claim_evidence_aligner.
+_CONTRADICTED_KEYWORDS = {
+    "debunked", "refuted", "disproven", "contradicts", "inaccurate",
+    "misleading", "myth", "fabricated", "denied", "false", "incorrect",
+}
 
 
 def verify_claims(
@@ -68,37 +77,72 @@ def verify_claims(
             )
             continue
 
-        best_overlap_ratio = 0.0
+        best_similarity_score = 0.0
         best_evidence_indices: list[int] = []
+        best_ev_for_reasoning: EvidenceItem | None = None
         has_contradiction = False
 
         for ev_idx, ev in claim_evidence:
-            ev_keywords = set(extract_keywords(ev.snippet))
-            overlap = claim_keywords & ev_keywords
-            ratio = len(overlap) / len(claim_keywords)
+            # Use TF-IDF cosine similarity (much better than raw Jaccard overlap)
+            sim = best_similarity(claim, ev.snippet)
 
-            if ratio > best_overlap_ratio:
-                best_overlap_ratio = ratio
+            if sim > best_similarity_score:
+                best_similarity_score = sim
                 best_evidence_indices = [ev_idx]
+                best_ev_for_reasoning = ev
 
             # Check for contradiction signals in the evidence snippet.
+            # Also check keyword overlap to avoid false positives.
             ev_lower = ev.snippet.lower()
-            if overlap and any(kw in ev_lower for kw in _CONTRADICTED_KEYWORDS):
+            ev_keywords = set(extract_keywords(ev.snippet))
+            has_shared_keywords = bool(claim_keywords & ev_keywords)
+            if has_shared_keywords and any(kw in ev_lower for kw in _CONTRADICTED_KEYWORDS):
                 has_contradiction = True
 
         # Determine verdict.
         if has_contradiction:
             verdict = Verdict.CONTRADICTED
-            confidence = round(min(best_overlap_ratio + 0.2, 1.0), 2)
-            reasoning = "Evidence contains contradiction signals alongside partial topic overlap."
-        elif best_overlap_ratio >= _SUPPORTED_THRESHOLD:
+            confidence = round(min(best_similarity_score + 0.2, 1.0), 2)
+            # Build specific reasoning referencing the evidence source
+            if best_ev_for_reasoning:
+                snippet_preview = best_ev_for_reasoning.snippet[:100]
+                reasoning = (
+                    f"Evidence from '{best_ev_for_reasoning.source}' contains contradiction "
+                    f"signals: \"{snippet_preview}…\""
+                )
+            else:
+                reasoning = "Evidence contains contradiction signals alongside topic overlap."
+        elif best_similarity_score >= _SUPPORTED_THRESHOLD:
             verdict = Verdict.SUPPORTED
-            confidence = round(best_overlap_ratio, 2)
-            reasoning = "Evidence aligns with the claim."
+            confidence = round(best_similarity_score, 2)
+            # Build specific reasoning referencing the supporting evidence
+            if best_ev_for_reasoning:
+                snippet_preview = best_ev_for_reasoning.snippet[:100]
+                reasoning = (
+                    f"Supported by '{best_ev_for_reasoning.source}' (similarity "
+                    f"{best_similarity_score:.2f}): \"{snippet_preview}…\""
+                )
+            else:
+                reasoning = "Evidence aligns with the claim."
         else:
             verdict = Verdict.NOT_ENOUGH_EVIDENCE
-            confidence = round(best_overlap_ratio, 2)
-            reasoning = "Insufficient keyword overlap to confirm or contradict the claim."
+            confidence = round(best_similarity_score, 2)
+            reasoning = (
+                f"Insufficient evidence (best similarity {best_similarity_score:.2f}, "
+                f"threshold {_SUPPORTED_THRESHOLD:.2f}). The claim could not be confirmed "
+                "or contradicted by the available evidence."
+            )
+
+        # Post-check: upgrade SUPPORTED to CONTRADICTED if numeric values conflict
+        if verdict == Verdict.SUPPORTED and best_ev_for_reasoning is not None:
+            num_check = check_numerical_conflict(claim, best_ev_for_reasoning.snippet)
+            if num_check.has_numeric_conflict:
+                verdict = Verdict.CONTRADICTED
+                confidence = round(min(best_similarity_score + 0.1, 1.0), 2)
+                reasoning = (
+                    f"Topic-level evidence found but numeric conflict detected: "
+                    f"{num_check.conflict_detail}"
+                )
 
         verdicts.append(
             ClaimVerdict(

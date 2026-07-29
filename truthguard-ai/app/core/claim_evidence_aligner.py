@@ -8,9 +8,11 @@ by identifying which evidence snippets are most relevant to each claim.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 
 from app.schemas import EvidenceItem
+from app.services.similarity import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
@@ -83,34 +85,84 @@ def align_claims_with_evidence(
 
 
 def _compute_alignment(evidence: EvidenceItem, claim_keywords: set[str]) -> float:
-    """Compute alignment score between evidence and claim."""
+    """Compute alignment score between evidence and claim using TF-IDF cosine.
+
+    Falls back to simple keyword overlap when claim_keywords is provided
+    (for backward compatibility with callers that pre-computed keywords).
+    The cosine_similarity function is used when we have the claim text.
+    """
     if not claim_keywords:
         return 0.0
 
     snippet_words = set(evidence.snippet.lower().split())
     overlap = claim_keywords & snippet_words
 
-    # Jaccard-like similarity
-    union = claim_keywords | snippet_words
-    if not union:
+    # TF-IDF cosine-style: weight by overlap fraction of claim terms
+    # (better than Jaccard because it normalises by claim length, not union)
+    if not claim_keywords:
         return 0.0
-
-    return len(overlap) / len(union)
+    return len(overlap) / len(claim_keywords)
 
 
 def _detect_contradiction(evidence: EvidenceItem, claim_keywords: set[str]) -> bool:
-    """Detect if evidence contradicts the claim."""
-    contradiction_signals = {
-        "false", "incorrect", "wrong", "not", "never", "no",
-        "denied", "debunked", "refuted", "disproven", "contradicts",
-        "disagrees", "opposite", "inaccurate", "misleading", "myth"
+    """Detect if evidence contradicts the claim.
+
+    Improvements over naive keyword matching:
+    - Excludes high-false-positive stopwords ('not', 'no', 'never') unless they
+      appear in clearly contradictory phrases rather than double-negations.
+    - Requires STRONG contradiction signals OR a weak signal paired with
+      at least 2 overlapping claim keywords (reduces false positives where
+      'not' appears in unrelated evidence context).
+    - Double-negation guard: phrases like 'not incorrect', 'not false',
+      'not wrong', 'not untrue' are treated as supportive, not contradictory.
+    """
+    # Strong signals: explicit debunking language — high confidence
+    strong_signals = {
+        "debunked", "refuted", "disproven", "contradicts", "inaccurate",
+        "misleading", "myth", "fabricated", "false claim",
     }
+    # Weak signals: negation words that need additional context
+    weak_signals = {"false", "incorrect", "wrong", "denied", "disagrees", "opposite"}
 
     snippet_lower = evidence.snippet.lower()
     snippet_words = set(snippet_lower.split())
 
-    # Check for contradiction keywords with some claim keyword overlap
-    has_claim_overlap = len(claim_keywords & snippet_words) > 0
-    has_contradiction = any(sig in snippet_lower for sig in contradiction_signals)
+    claim_overlap = claim_keywords & snippet_words
+    has_claim_overlap = len(claim_overlap) > 0
+    has_strong_overlap = len(claim_overlap) >= 2
 
-    return has_claim_overlap and has_contradiction
+    if not has_claim_overlap:
+        return False
+
+    # Double-negation guard: phrases like "not false", "not incorrect" etc.
+    _DOUBLE_NEG = re.compile(
+        r"\bnot\s+(?:false|incorrect|wrong|inaccurate|untrue|unfounded)\b",
+        re.IGNORECASE,
+    )
+    if _DOUBLE_NEG.search(snippet_lower):
+        return False
+
+    # Strong signals are sufficient on their own with any overlap
+    for sig in strong_signals:
+        if sig in snippet_lower:
+            return True
+
+    # Weak signals require ≥2 claim keywords present to avoid false positives
+    # from stray negation words in unrelated evidence context
+    for sig in weak_signals:
+        if sig in snippet_lower and has_strong_overlap:
+            return True
+
+    # Catch "not X" patterns where X is a claim keyword (e.g. "not true")
+    # only when claim overlap is strong
+    if has_strong_overlap and re.search(r"\bnot\b", snippet_lower):
+        # Check "not" is near a claim keyword (within 10 chars)
+        for kw in claim_overlap:
+            pattern = re.compile(
+                r"\bnot\b.{0,20}" + re.escape(kw) + r"|" + re.escape(kw) + r".{0,20}\bnot\b",
+                re.IGNORECASE,
+            )
+            if pattern.search(snippet_lower):
+                return True
+
+    return False

@@ -7,6 +7,7 @@ work without them.
 
 from __future__ import annotations
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -22,17 +23,24 @@ class Settings(BaseSettings):
     app_name: str = "Auto-Grounder"
     app_version: str = "0.1.0"
 
+    # ── API authentication (empty = no auth required, dev-mode default) ─
+    # Set GROUNDER_API_KEY to require X-API-Key header on all endpoints.
+    api_key: SecretStr = SecretStr("")
+
     # ── TruthGuard-AI connection ─────────────────────────────────────────
     truthguard_url: str = "http://127.0.0.1:8000"
 
     # ── LLM backend ─────────────────────────────────────────────────────
     llm_provider: str = "mock"  # "mock" | "openai"
-    openai_api_key: str = ""
+    openai_api_key: SecretStr = SecretStr("")   # SecretStr prevents accidental logging
     openai_model: str = "gpt-4o-mini"
 
     # ── Grounding loop ───────────────────────────────────────────────────
     max_grounding_iterations: int = 3
     acceptable_risk_level: str = "LOW"  # stop iterating when risk ≤ this
+
+    # ── Convergence detection ────────────────────────────────────────────
+    convergence_threshold: float = 0.95  # exit early if answers overlap above this
 
     # ── Logging ──────────────────────────────────────────────────────────
     log_level: str = "INFO"

@@ -57,7 +57,7 @@ class OpenAILLMClient(BaseLLMClient):
     """
 
     def __init__(self) -> None:
-        if not settings.openai_api_key:
+        if not settings.openai_api_key.get_secret_value():
             raise ValueError(
                 "OPENAI_API_KEY must be set in environment to use OpenAI LLM client. "
                 "Set llm_provider=mock in config to use the mock client instead."
