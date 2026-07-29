@@ -103,13 +103,14 @@ def get_llm_client() -> BaseLLMClient:
     provider = settings.llm_provider.lower()
 
     if provider == "openai":
-        if not settings.openai_api_key:
+        key = settings.openai_api_key.get_secret_value()
+        if not key:
             raise ValueError(
                 "GROUNDER_OPENAI_API_KEY must be set when llm_provider='openai'."
             )
         logger.info("Using OpenAI LLM client (model=%s)", settings.openai_model)
         return OpenAILLMClient(
-            api_key=settings.openai_api_key,
+            api_key=key,
             model=settings.openai_model,
         )
 

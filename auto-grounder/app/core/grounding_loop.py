@@ -16,6 +16,7 @@ from app.core.corrective_prompt import build_corrective_prompt
 from app.schemas import GroundingIteration, GroundResponse
 from app.services.llm_client import get_llm_client
 from app.services.truthguard_client import get_truthguard_client
+from app.utils.injection_guard import contains_injection
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,22 @@ def _extract_failed_claims(
 def _extract_evidence(verification: dict[str, Any]) -> list[dict[str, Any]]:
     """Pull the evidence items out of a verification response."""
     return verification.get("evidence_items", [])
+
+
+def _answers_converged(answer1: str, answer2: str, threshold: float | None = None) -> bool:
+    """Return True if two consecutive answers are too similar to expect improvement.
+
+    Uses token overlap ratio. If the ratio exceeds the threshold, the loop
+    has converged and further iterations would be wasteful.
+    """
+    if threshold is None:
+        threshold = settings.convergence_threshold
+    tokens1 = set(answer1.lower().split())
+    tokens2 = set(answer2.lower().split())
+    if not tokens1 or not tokens2:
+        return False
+    overlap = len(tokens1 & tokens2) / max(len(tokens1), len(tokens2))
+    return overlap >= threshold
 
 
 # ── Public API ───────────────────────────────────────────────────────────
@@ -167,6 +184,36 @@ def run_grounding_loop(
                 ),
             )
 
+        # ── Step 3b: Injection guard ─────────────────────────────────────────
+        if contains_injection(current_answer):
+            logger.warning(
+                "Injection pattern detected in answer on iteration %d — "
+                "skipping correction to prevent LLM forwarding of adversarial content.",
+                i,
+            )
+            iteration = GroundingIteration(
+                iteration=i,
+                answer=current_answer,
+                risk_score=risk_score,
+                risk_level=risk_level,
+                contradicted_claims=contradicted,
+                unsupported_claims=unsupported,
+                action_taken="injection_detected",
+            )
+            iterations.append(iteration)
+            return GroundResponse(
+                final_answer=current_answer,
+                grounded=False,
+                risk_score=risk_score,
+                risk_level=risk_level,
+                total_iterations=i,
+                iterations=iterations,
+                summary=(
+                    f"Iteration {i}: Injection pattern detected in answer — "
+                    "correction halted to prevent adversarial prompt forwarding."
+                ),
+            )
+
         # ── Step 4: Correct ──────────────────────────────────────────
         evidence = _extract_evidence(verification)
         prompt = build_corrective_prompt(
@@ -190,6 +237,14 @@ def run_grounding_loop(
 
         current_answer = llm_client.complete(prompt)
         logger.info("Corrected answer generated (length=%d)", len(current_answer))
+
+        # Convergence check: if new answer is nearly identical, stop early
+        if _answers_converged(iteration.answer, current_answer):
+            logger.info(
+                "Convergence detected on iteration %d — answer unchanged, stopping early.",
+                i,
+            )
+            break
 
     # Fallback (should not be reached due to loop logic).
     return GroundResponse(  # pragma: no cover

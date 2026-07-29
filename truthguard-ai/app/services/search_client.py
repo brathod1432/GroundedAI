@@ -158,7 +158,7 @@ class TavilySearchClient(BaseSearchClient):
     """
 
     def __init__(self) -> None:
-        if not settings.tavily_api_key:
+        if not settings.tavily_api_key.get_secret_value():
             raise ValueError(
                 "TAVILY_API_KEY must be set in environment to use Tavily search client. "
                 "Set search_provider=mock in config to use the mock client instead."

@@ -13,6 +13,8 @@ def build_corrective_prompt(
     evidence: list[dict],
     contradicted_claims: list[str],
     unsupported_claims: list[str],
+    max_evidence_snippets: int = 5,
+    max_snippet_chars: int = 200,
 ) -> str:
     """Build a corrective prompt for the LLM.
 
@@ -29,6 +31,13 @@ def build_corrective_prompt(
         Claims from the answer that were contradicted by evidence.
     unsupported_claims:
         Claims from the answer that lacked sufficient evidence.
+    max_evidence_snippets:
+        Maximum number of evidence items to include in the prompt.
+        Items are sorted by relevance score (descending) before capping.
+    max_snippet_chars:
+        Maximum character length for each evidence snippet.  Longer
+        snippets are truncated with a trailing ellipsis to stay within
+        the token budget.
 
     Returns
     -------
@@ -68,9 +77,19 @@ def build_corrective_prompt(
 
     # ── Trusted evidence ─────────────────────────────────────────────
     if evidence:
+        # Sort by relevance score descending (if available), cap at max_evidence_snippets
+        sorted_evidence = sorted(
+            evidence,
+            key=lambda e: e.get("relevance_score", 0.0),
+            reverse=True,
+        )[:max_evidence_snippets]
+
         evidence_lines: list[str] = []
-        for idx, ev in enumerate(evidence, 1):
+        for idx, ev in enumerate(sorted_evidence, 1):
             snippet = ev.get("snippet", "")
+            # Truncate long snippets to stay within token budget
+            if len(snippet) > max_snippet_chars:
+                snippet = snippet[:max_snippet_chars] + "…"
             source = ev.get("source", "unknown")
             url = ev.get("url", "")
             line = f"{idx}. [{source}] {snippet}"

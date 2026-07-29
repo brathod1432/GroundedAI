@@ -71,3 +71,8 @@ reports/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Runtime data (SQLite feedback DB, generated files)
+data/
+*.db
+*.sqlite3
